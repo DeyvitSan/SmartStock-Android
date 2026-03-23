@@ -1,13 +1,7 @@
 package com.deyvieat.smartstock
 
 import android.app.Application
-import com.deyvieat.smartstock.core.di.AppContainer
+import dagger.hilt.android.HiltAndroidApp
 
-class SmartStockApplication : Application() {
-    lateinit var appContainer: AppContainer
-
-    override fun onCreate() {
-        super.onCreate()
-        appContainer = AppContainer(this)
-    }
-}
+@HiltAndroidApp
+class SmartStockApplication : Application()

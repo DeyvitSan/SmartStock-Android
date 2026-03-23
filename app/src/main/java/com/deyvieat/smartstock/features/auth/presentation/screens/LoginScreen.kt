@@ -1,13 +1,13 @@
-package com.deyvieat.smartstock.features.auth.presentation.screen
+package com.deyvieat.smartstock.features.auth.presentation.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.deyvieat.smartstock.features.auth.presentation.viewmodels.LoginViewModel
 
 @Composable
@@ -16,53 +16,54 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onRegisterClick: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val email by viewModel.email.collectAsStateWithLifecycle()
+    val password by viewModel.password.collectAsStateWithLifecycle()
+
+    // Navegar al éxito
+    LaunchedEffect(uiState.isSuccess) {
+        if (uiState.isSuccess) onLoginSuccess()
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "SmartStock", style = MaterialTheme.typography.displayMedium)
-
-        Spacer(modifier = Modifier.height(32.dp))
+        Text("SmartStock", style = MaterialTheme.typography.displayMedium)
+        Spacer(Modifier.height(32.dp))
 
         OutlinedTextField(
-            value = viewModel.email,
+            value = email,
             onValueChange = { viewModel.onEmailChange(it) },
             label = { Text("Correo") },
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = viewModel.password,
+            value = password,
             onValueChange = { viewModel.onPasswordChange(it) },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Muestra errores si existen
-        if (viewModel.errorMessage != null) {
-            Text(text = viewModel.errorMessage!!, color = Color.Red)
-            Spacer(modifier = Modifier.height(8.dp))
+        if (uiState.error != null) {
+            Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(8.dp))
         }
 
         Button(
-            onClick = { viewModel.login(onSuccess = onLoginSuccess) },
+            onClick = { viewModel.login() },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !viewModel.isLoading
+            enabled = !uiState.isLoading
         ) {
-            if (viewModel.isLoading) {
-                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-            } else {
-                Text("Iniciar Sesión")
-            }
+            if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            else Text("Iniciar Sesión")
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
         TextButton(onClick = onRegisterClick) {
             Text("¿No tienes cuenta? Regístrate")

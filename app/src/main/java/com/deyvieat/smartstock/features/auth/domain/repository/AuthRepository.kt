@@ -1,11 +1,15 @@
 package com.deyvieat.smartstock.features.auth.domain.repository
 
-import com.deyvieat.smartstock.core.network.GenericResponse
-import com.deyvieat.smartstock.core.network.LoginRequest
-import com.deyvieat.smartstock.core.network.LoginResponse
-import com.deyvieat.smartstock.core.network.RegisterRequest
+import com.deyvieat.smartstock.features.auth.domain.entities.LoginResult
+import com.deyvieat.smartstock.features.auth.domain.entities.RegisterResult
+import com.deyvieat.smartstock.features.auth.domain.entities.UserSession
 
 interface AuthRepository {
-    suspend fun login(request: LoginRequest): LoginResponse
-    suspend fun register(request: RegisterRequest): GenericResponse
+    suspend fun login(email: String, password: String): LoginResult
+    suspend fun register(name: String, email: String, password: String): RegisterResult
+
+    // Sesión local Room permite login offline
+    suspend fun getSession(): UserSession?
+    suspend fun saveSession(email: String)
+    suspend fun clearSession()
 }

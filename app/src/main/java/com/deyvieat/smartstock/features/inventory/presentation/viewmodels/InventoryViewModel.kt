@@ -1,41 +1,41 @@
-package com.deyvieat.smartstock.features.inventory.presentation.viewmodel
+package com.deyvieat.smartstock.features.inventory.presentation.viewmodels
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.deyvieat.smartstock.features.inventory.domain.entities.Product
 import com.deyvieat.smartstock.features.inventory.domain.usecases.GetProductsUseCase
+import com.deyvieat.smartstock.features.inventory.presentation.screens.InventoryUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-//Aquí recibe el usecase no la API
-class InventoryViewModel(private val getProductsUseCase: GetProductsUseCase) : ViewModel() {
+@HiltViewModel
+class InventoryViewModel @Inject constructor(
+    private val getProductsUseCase: GetProductsUseCase
+) : ViewModel() {
 
-    var products by mutableStateOf<List<Product>>(emptyList())
-        private set
+    private val _uiState = MutableStateFlow(InventoryUiState())
+    val uiState = _uiState.asStateFlow()
 
-    var isLoading by mutableStateOf(false)
-        private set
+    // Flow reactivo de Room: la UI se actualiza automáticamente ante cualquier cambio
+    val products = getProductsUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    var errorMessage by mutableStateOf<String?>(null)
-        private set
+    init { syncWithApi() }
 
-    init {
-        fetchProducts()
-    }
-
-    fun fetchProducts() {
+    fun syncWithApi() {
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            isLoading = true
-            errorMessage = null
             try {
-                //usamos el caso de uso
-                products = getProductsUseCase()
+                getProductsUseCase.sync()
+                _uiState.update { it.copy(isLoading = false) }
             } catch (e: Exception) {
-                errorMessage = "Error: ${e.message}"
-            } finally {
-                isLoading = false
+                // Sin conexión: Room sigue sirviendo datos del último sync
+                _uiState.update { it.copy(isLoading = false, error = "Sin conexión - mostrando datos locales") }
             }
         }
     }

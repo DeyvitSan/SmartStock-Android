@@ -1,86 +1,61 @@
-package com.deyvieat.smartstock.features.inventory.presentation.viewmodel
+package com.deyvieat.smartstock.features.inventory.presentation.viewmodels
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deyvieat.smartstock.features.inventory.domain.entities.Product
 import com.deyvieat.smartstock.features.inventory.domain.usecases.DeleteProductUseCase
 import com.deyvieat.smartstock.features.inventory.domain.usecases.UpdateProductUseCase
+import com.deyvieat.smartstock.features.inventory.presentation.screens.EditProductUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class EditProductViewModel(
+@HiltViewModel
+class EditProductViewModel @Inject constructor(
     private val updateProductUseCase: UpdateProductUseCase,
     private val deleteProductUseCase: DeleteProductUseCase
 ) : ViewModel() {
 
-    //Datos del formulario
-    var id by mutableStateOf(0)
-    var name by mutableStateOf("")
-    var price by mutableStateOf("")
-    var quantity by mutableStateOf("")
+    private val _uiState = MutableStateFlow(EditProductUiState())
+    val uiState = _uiState.asStateFlow()
 
-    //Estado UI
-    var isLoading by mutableStateOf(false)
-    var statusMessage by mutableStateOf<String?>(null)
-    var isSuccess by mutableStateOf(false) //cerrar la pantalla
+    var id = MutableStateFlow(0)
+    var name = MutableStateFlow("")
+    var price = MutableStateFlow("")
+    var quantity = MutableStateFlow("")
 
-    //cargar datos iniciales al entrar a editar
     fun loadProduct(product: Product) {
-        id = product.id
-        name = product.name
-        price = product.price.toString()
-        quantity = product.quantity.toString()
+        id.value = product.id; name.value = product.name
+        price.value = product.price.toString(); quantity.value = product.quantity.toString()
     }
 
     fun updateProduct() {
-        //Validaciones
-        val priceDouble = price.toDoubleOrNull()
-        val qtyInt = quantity.toIntOrNull()
-
-        if (priceDouble == null || priceDouble < 0 || qtyInt == null || qtyInt < 0) {
-            statusMessage = "Datos inválidos"
-            return
+        val priceDouble = price.value.toDoubleOrNull()
+        val qtyInt = quantity.value.toIntOrNull()
+        if (priceDouble == null || qtyInt == null) {
+            _uiState.update { it.copy(error = "Datos inválidos") }; return
         }
-
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            isLoading = true
-            statusMessage = null
-            try {
-                val updatedProduct = Product(id, name, priceDouble, qtyInt)
-                val response = updateProductUseCase(updatedProduct)
-
-                if (response.success) {
-                    statusMessage = "Actualizado correctamente"
-                    isSuccess = true
-                } else {
-                    statusMessage = "Error: ${response.message}"
-                }
-            } catch (e: Exception) {
-                statusMessage = "Error: ${e.message}"
-            } finally {
-                isLoading = false
-            }
+            val result = updateProductUseCase(Product(id.value, name.value, priceDouble, qtyInt))
+            _uiState.update { s -> result.fold(
+                onSuccess = { s.copy(isLoading = false, isSuccess = true) },
+                onFailure = { e -> s.copy(isLoading = false, error = e.message) }
+            )}
         }
     }
 
     fun deleteProduct() {
+        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            isLoading = true
-            try {
-                val response = deleteProductUseCase(id)
-                if (response.success) {
-                    statusMessage = "Producto eliminado"
-                    isSuccess = true
-                } else {
-                    statusMessage = "Error al eliminar: ${response.message}"
-                }
-            } catch (e: Exception) {
-                statusMessage = "Error: ${e.message}"
-            } finally {
-                isLoading = false
-            }
+            val result = deleteProductUseCase(id.value)
+            _uiState.update { s -> result.fold(
+                onSuccess = { s.copy(isLoading = false, isSuccess = true) },
+                onFailure = { e -> s.copy(isLoading = false, error = e.message) }
+            )}
         }
     }
 }

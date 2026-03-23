@@ -1,31 +1,68 @@
 package com.deyvieat.smartstock.features.inventory.data.repository
 
-import com.deyvieat.smartstock.core.network.GenericResponse
-import com.deyvieat.smartstock.core.network.InventoryApiService
-import com.deyvieat.smartstock.features.inventory.data.mapper.toDomain
-import com.deyvieat.smartstock.features.inventory.data.mapper.toDto
-import com.deyvieat.smartstock.features.inventory.domain.entity.Product
+import com.deyvieat.smartstock.features.inventory.data.datasources.local.dao.ProductDao
+import com.deyvieat.smartstock.features.inventory.data.datasources.local.mapper.toDomain
+import com.deyvieat.smartstock.features.inventory.data.datasources.local.mapper.toEntity
+import com.deyvieat.smartstock.features.inventory.data.datasources.remote.api.InventoryApi
+import com.deyvieat.smartstock.features.inventory.data.datasources.remote.mapper.toDomain
+import com.deyvieat.smartstock.features.inventory.data.datasources.remote.mapper.toDto
+import com.deyvieat.smartstock.features.inventory.domain.entities.Product
 import com.deyvieat.smartstock.features.inventory.domain.repository.InventoryRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class InventoryRepositoryImpl(private val apiService: InventoryApiService) : InventoryRepository {
+class InventoryRepositoryImpl @Inject constructor(
+    private val api: InventoryApi,
+    private val dao: ProductDao
+) : InventoryRepository {
 
-    override suspend fun getProducts(): List<Product> {
-        // Obtenemos DTOs de la API y los convertimos a Domain
-        return apiService.getProducts().map { it.toDomain() }
+    override fun getProductsStream(): Flow<List<Product>> =
+        dao.getAllProducts().map { it.map { entity -> entity.toDomain() } }
+
+    override fun getLowStockStream(threshold: Int): Flow<List<Product>> =
+        dao.getLowStockProducts(threshold).map { it.map { entity -> entity.toDomain() } }
+
+    override suspend fun syncProducts() {
+        val remoteProducts = api.getProducts()
+        dao.clearAll()
+        dao.upsertProducts(remoteProducts.map { it.toDomain().toEntity() })
     }
 
-    override suspend fun addProduct(product: Product): GenericResponse {
-        // Convertimos Domain a DTO (User ID 1 temporal) y enviamos
-        return apiService.addProduct(product.toDto(userId = 1))
+    override suspend fun addProduct(product: Product): Result<Unit> {
+        return try {
+            val response = api.addProduct(product.toDto())
+            if (response.success) {
+                //sincroniza desde API para obtener el ID real asignado por mySQL
+                syncProducts()
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.message ?: "Error al agregar"))
+            }
+        } catch (e: Exception) { Result.failure(e) }
     }
 
-    override suspend fun updateProduct(product: Product): GenericResponse {
-        // La API pide ID en la URL y el objeto en el body
-        return apiService.updateProduct(product.id, product.toDto(userId = 1))
+    override suspend fun updateProduct(product: Product): Result<Unit> {
+        return try {
+            val response = api.updateProduct(product.id, product.toDto())
+            if (response.success) {
+                dao.upsertProduct(product.toEntity())
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.message ?: "Error al actualizar"))
+            }
+        } catch (e: Exception) { Result.failure(e) }
     }
 
-    //DELETE
-    override suspend fun deleteProduct(id: Int): GenericResponse {
-        return apiService.deleteProduct(id)
+    override suspend fun deleteProduct(id: Int): Result<Unit> {
+        return try {
+            val response = api.deleteProduct(id)
+            if (response.success) {
+                dao.deleteProduct(id)
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.message ?: "Error al eliminar"))
+            }
+        } catch (e: Exception) { Result.failure(e) }
     }
 }

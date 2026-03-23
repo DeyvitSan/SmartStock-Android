@@ -1,4 +1,7 @@
 package com.deyvieat.smartstock.features.auth.presentation.screens
 
-class RegisterUiState {
-}
+data class RegisterUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isSuccess: Boolean = false
+)

@@ -1,13 +1,13 @@
 package com.deyvieat.smartstock.features.inventory.domain.repository
 
-import com.deyvieat.smartstock.core.network.GenericResponse
-import com.deyvieat.smartstock.features.inventory.domain.entity.Product
+import com.deyvieat.smartstock.features.inventory.domain.entities.Product
+import kotlinx.coroutines.flow.Flow
 
 interface InventoryRepository {
-    suspend fun getProducts(): List<Product>
-    suspend fun addProduct(product: Product): GenericResponse
-
-    suspend fun updateProduct(product: Product): GenericResponse
-
-    suspend fun deleteProduct(id: Int): GenericResponse
+    fun getProductsStream(): Flow<List<Product>>
+    fun getLowStockStream(threshold: Int = 5): Flow<List<Product>>
+    suspend fun syncProducts()
+    suspend fun addProduct(product: Product): Result<Unit>
+    suspend fun updateProduct(product: Product): Result<Unit>
+    suspend fun deleteProduct(id: Int): Result<Unit>
 }

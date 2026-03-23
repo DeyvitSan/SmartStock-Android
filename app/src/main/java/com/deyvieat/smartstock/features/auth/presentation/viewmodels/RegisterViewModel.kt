@@ -1,70 +1,51 @@
-package com.deyvieat.smartstock.features.auth.presentation.viewmodel
+package com.deyvieat.smartstock.features.auth.presentation.viewmodels
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.deyvieat.smartstock.core.network.RegisterRequest
 import com.deyvieat.smartstock.features.auth.domain.usecase.RegisterUseCase
+import com.deyvieat.smartstock.features.auth.presentation.screens.RegisterUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import android.util.Patterns
+import javax.inject.Inject
 
-class RegisterViewModel(private val registerUseCase: RegisterUseCase) : ViewModel() {
+@HiltViewModel
+class RegisterViewModel @Inject constructor(
+    private val registerUseCase: RegisterUseCase
+) : ViewModel() {
 
-    // Campos del formulario
-    var name by mutableStateOf("")
-    var email by mutableStateOf("")
-    var password by mutableStateOf("")
+    private val _uiState = MutableStateFlow(RegisterUiState())
+    val uiState = _uiState.asStateFlow()
 
-    // Estado de la pantalla
-    var isLoading by mutableStateOf(false)
-    var errorMessage by mutableStateOf<String?>(null)
-    var isSuccess by mutableStateOf(false)
+    var name = MutableStateFlow("")
+    var email = MutableStateFlow("")
+    var password = MutableStateFlow("")
 
-    fun onNameChange(v: String) { name = v }
-    fun onEmailChange(v: String) { email = v }
-    fun onPasswordChange(v: String) { password = v }
+    fun onNameChange(v: String) { name.value = v }
+    fun onEmailChange(v: String) { email.value = v }
+    fun onPasswordChange(v: String) { password.value = v }
 
     fun register() {
-        if (name.isBlank() || email.isBlank() || password.isBlank()) {
-            errorMessage = "Todos los campos son obligatorios"
-            return
+        if (name.value.isBlank() || email.value.isBlank() || password.value.isBlank()) {
+            _uiState.update { it.copy(error = "Todos los campos son obligatorios") }; return
         }
-
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            errorMessage = "Ingresa un correo válido (ejemplo@correo.com)"
-            return
+        if (!Patterns.EMAIL_ADDRESS.matcher(email.value).matches()) {
+            _uiState.update { it.copy(error = "Correo inválido") }; return
         }
-
-        if (password.length < 6) {
-            errorMessage = "La contraseña debe tener al menos 6 caracteres"
-            return
+        if (password.value.length < 6) {
+            _uiState.update { it.copy(error = "La contraseña debe tener al menos 6 caracteres") }; return
         }
-
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            isLoading = true
-            errorMessage = null
-            try {
-                val request = RegisterRequest(
-                    name = name,
-                    email = email.trim(),
-                    password = password.trim()
+            val result = registerUseCase(name.value, email.value.trim(), password.value.trim())
+            _uiState.update { currentState ->
+                result.fold(
+                    onSuccess = { currentState.copy(isLoading = false, isSuccess = true) },
+                    onFailure = { e -> currentState.copy(isLoading = false, error = e.message) }
                 )
-
-                val response = registerUseCase(request)
-
-                if (response.success) {
-                    isSuccess = true
-                    errorMessage = null // Limpiamos errores
-                } else {
-                    errorMessage = response.message ?: "Error al registrar"
-                }
-
-            } catch (e: Exception) {
-                errorMessage = "Error de conexión: ${e.message}"
-            } finally {
-                isLoading = false
             }
         }
     }

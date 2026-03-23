@@ -1,73 +1,48 @@
-package com.deyvieat.smartstock.features.inventory.presentation.viewmodel
+package com.deyvieat.smartstock.features.inventory.presentation.viewmodels
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.deyvieat.smartstock.features.inventory.domain.entities.Product
 import com.deyvieat.smartstock.features.inventory.domain.usecases.AddProductUseCase
+import com.deyvieat.smartstock.features.inventory.presentation.screens.AddProductUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class AddProductViewModel(private val addProductUseCase: AddProductUseCase) : ViewModel() {
+@HiltViewModel
+class AddProductViewModel @Inject constructor(
+    private val addProductUseCase: AddProductUseCase
+) : ViewModel() {
 
-    //Estados del formulario
-    var name by mutableStateOf("")
-    var price by mutableStateOf("")
-    var quantity by mutableStateOf("")
+    private val _uiState = MutableStateFlow(AddProductUiState())
+    val uiState = _uiState.asStateFlow()
 
-    //Estados de la UI
-    var isLoading by mutableStateOf(false)
-    var statusMessage by mutableStateOf<String?>(null)
-    var isSuccess by mutableStateOf(false)
+    var name = MutableStateFlow("")
+    var price = MutableStateFlow("")
+    var quantity = MutableStateFlow("")
 
-    fun onNameChange(v: String) { name = v }
-    fun onPriceChange(v: String) { price = v }
-    fun onQuantityChange(v: String) { quantity = v }
+    fun onNameChange(v: String) { name.value = v }
+    fun onPriceChange(v: String) { price.value = v }
+    fun onQuantityChange(v: String) { quantity.value = v }
 
     fun saveProduct() {
-        if (name.isBlank() || price.isBlank() || quantity.isBlank()) {
-            statusMessage = "Llena todos los campos"
-            return
+        val priceDouble = price.value.toDoubleOrNull()
+        val qtyInt = quantity.value.toIntOrNull()
+
+        if (name.value.isBlank() || priceDouble == null || qtyInt == null || priceDouble < 0 || qtyInt < 0) {
+            _uiState.update { it.copy(error = "Verifica que todos los campos sean válidos") }; return
         }
-
-        val priceDouble = price.toDoubleOrNull()
-        val qtyInt = quantity.toIntOrNull()
-
-        if (priceDouble == null || priceDouble < 0) {
-            statusMessage = "El precio debe ser válido y no puede ser negativo"
-            return
-        }
-
-        if (qtyInt == null || qtyInt < 0) {
-            statusMessage = "La cantidad debe ser válida y no puede ser negativa"
-            return
-        }
-
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            isLoading = true
-            statusMessage = null
-            try {
-                //Creamos la Entity (ID 0 porque es nuevo)
-                val newProduct = Product(
-                    id = 0,
-                    name = name,
-                    price = price.toDoubleOrNull() ?: 0.0,
-                    quantity = quantity.toIntOrNull() ?: 0
+            val result = addProductUseCase(Product(0, name.value, priceDouble, qtyInt))
+            _uiState.update { currentState ->
+                result.fold(
+                    onSuccess = { currentState.copy(isLoading = false, isSuccess = true) },
+                    onFailure = { e -> currentState.copy(isLoading = false, error = e.message) }
                 )
-
-                val response = addProductUseCase(newProduct)
-
-                if (response.success) {
-                    statusMessage = "Producto guardado con éxito"
-                    isSuccess = true
-                } else {
-                    statusMessage = "Error: ${response.message}"
-                }
-            } catch (e: Exception) {
-                statusMessage = "Error al guardar: ${e.message}"
-            } finally {
-                isLoading = false
             }
         }
     }

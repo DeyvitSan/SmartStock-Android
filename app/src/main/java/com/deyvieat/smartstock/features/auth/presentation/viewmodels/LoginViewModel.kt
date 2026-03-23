@@ -1,51 +1,39 @@
-package com.deyvieat.smartstock.features.auth.presentation.viewmodel
+package com.deyvieat.smartstock.features.auth.presentation.viewmodels
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.deyvieat.smartstock.core.network.LoginRequest
 import com.deyvieat.smartstock.features.auth.domain.usecase.LoginUseCase
+import com.deyvieat.smartstock.features.auth.presentation.screens.LoginUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
+import javax.inject.Inject
 
-class LoginViewModel(private val loginUseCase: LoginUseCase) : ViewModel() {
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val loginUseCase: LoginUseCase
+) : ViewModel() {
 
-    var email by mutableStateOf("")
-    var password by mutableStateOf("")
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState = _uiState.asStateFlow()
 
-    var isLoading by mutableStateOf(false)
-    var errorMessage by mutableStateOf<String?>(null)
+    var email = MutableStateFlow("")
+    var password = MutableStateFlow("")
 
-    fun onEmailChange(newValue: String) { email = newValue }
-    fun onPasswordChange(newValue: String) { password = newValue }
+    fun onEmailChange(value: String) { email.value = value }
+    fun onPasswordChange(value: String) { password.value = value }
 
-    fun login(onSuccess: () -> Unit) {
+    fun login() {
+        _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
-            isLoading = true
-            errorMessage = null
-            try {
-                //UseCase y .trim() por seguridad
-                val request = LoginRequest(email.trim(), password.trim())
-                val response = loginUseCase(request)
-
-                if (response.success) {
-                    onSuccess()
-                } else {
-                    errorMessage = response.message ?: "Error desconocido"
-                }
-
-            } catch (e: HttpException) {
-                if (e.code() == 401) {
-                    errorMessage = "Usuario o contraseña incorrectos"
-                } else {
-                    errorMessage = "Error del servidor: ${e.code()}"
-                }
-            } catch (e: Exception) {
-                errorMessage = "Error de conexión: ${e.message}"
-            } finally {
-                isLoading = false
+            val result = loginUseCase(email.value.trim(), password.value.trim())
+            _uiState.update { currentState ->
+                result.fold(
+                    onSuccess = { currentState.copy(isLoading = false, isSuccess = true) },
+                    onFailure = { e -> currentState.copy(isLoading = false, error = e.message) }
+                )
             }
         }
     }
