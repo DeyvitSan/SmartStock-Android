@@ -125,5 +125,9 @@ fun NavigationWrapper() {
         composable<Dashboard> {
             DashboardScreen(onBack = { navController.popBackStack() })
         }
+
+        composable<Notifications> {
+            NotificationsScreen(onBack = { navController.popBackStack()})
+        }
     }
 }
