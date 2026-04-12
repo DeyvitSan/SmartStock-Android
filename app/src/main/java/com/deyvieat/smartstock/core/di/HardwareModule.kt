@@ -7,7 +7,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import android.content.Context
 import com.deyvieat.smartstock.core.notifications.NotificationHelper
+import com.deyvieat.smartstock.core.services.TokenApi
 import dagger.hilt.android.qualifiers.ApplicationContext
+import retrofit2.Retrofit
 import javax.inject.Singleton
 
 @Module
@@ -25,4 +27,9 @@ object HardwareModule {
     fun provideNotificationHelper(
         @ApplicationContext context: Context
     ): NotificationHelper = NotificationHelper(context)
+
+    @Provides
+    @Singleton
+    fun provideTokenApi(@SmartStockRetrofit retrofit: Retrofit): TokenApi =
+        retrofit.create(TokenApi::class.java)
 }

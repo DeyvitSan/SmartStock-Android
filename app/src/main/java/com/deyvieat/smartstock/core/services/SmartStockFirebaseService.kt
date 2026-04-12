@@ -26,15 +26,7 @@ class SmartStockFirebaseService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
 
-        viewModelScope
+        android.util.Log.d("FCM", "Token renovado: $token")
 
-        kotlin.coroutines.GlobalScope.launch{
-            try {
-                val api = retrofit.create(TokenApi::class.java)
-                api.saveToken(TokenDto(token))
-            } catch (e: Exception){
-                //Si falla no es critico
-            }
-        }
     }
 }
