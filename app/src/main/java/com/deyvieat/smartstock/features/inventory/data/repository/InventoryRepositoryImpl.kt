@@ -65,4 +65,7 @@ class InventoryRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) { Result.failure(e) }
     }
+
+    override suspend fun getLowStockList(threshold: Int): List<Product> =
+        dao.getLowStockList(threshold).map { it.toDomain() }
 }

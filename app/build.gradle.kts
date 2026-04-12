@@ -103,4 +103,10 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
 
+    //WorkManager
+    implementation(libs.androidx.work.runtime)
+
+    //Hilt para WorkManager
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
 }

@@ -27,4 +27,7 @@ interface ProductDao {
 
     @Query("DELETE FROM products")
     suspend fun clearAll()
+
+    @Query("SELECT * FROM products WHERE quantity <= :threshold")
+    suspend fun getLowStockList(threshold: Int): List<ProductEntity>
 }

@@ -22,7 +22,8 @@ fun InventoryHomeScreen(
     onAddProductClick: () -> Unit,
     onProductClick: (Product) -> Unit,
     onScannerClick: () -> Unit,
-    onDashboardClick: () -> Unit
+    onDashboardClick: () -> Unit,
+    onNotificationsClick : () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val products by viewModel.products.collectAsStateWithLifecycle()
@@ -44,6 +45,13 @@ fun InventoryHomeScreen(
                 }
                 OutlinedButton(onClick = onDashboardClick, modifier = Modifier.weight(1f)) {
                     Text("Dashboard")
+                }
+
+                OutlinedButton(
+                    onClick = onNotificationsClick,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Alertas")
                 }
             }
 

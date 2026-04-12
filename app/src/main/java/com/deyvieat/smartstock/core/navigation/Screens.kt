@@ -10,3 +10,5 @@ import kotlinx.serialization.Serializable
 @Serializable data class EditProduct(val productId: Int)
 @Serializable object Scanner      // F02
 @Serializable object Dashboard    // F03
+
+@Serializable object Notifications
