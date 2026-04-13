@@ -1,36 +1,26 @@
 package com.deyvieat.smartstock.features.notifications.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
-import com.deyvieat.smartstock.features.notifications.domain.entities.NotificationItem
+import androidx.lifecycle.viewModelScope
+import com.deyvieat.smartstock.features.notifications.domain.repository.NotificationsRepository
 import com.deyvieat.smartstock.features.notifications.presentation.screens.NotificationsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
-class NotificationsViewModel @Inject constructor() : ViewModel() {
+class NotificationsViewModel @Inject constructor(
+    private val repository: NotificationsRepository
+) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(NotificationsUiState())
-    val uiState = _uiState.asStateFlow()
-
-    private val _notifications = mutableListOf<NotificationItem>()
-
-    fun addNotification(productName: String, quantity: Int) {
-        _notifications.add(
-            0,
-            NotificationItem(
-                id = _notifications.size + 1,
-                productName = productName,
-                quantity = quantity
-            )
-        )
-        _uiState.update {
-            it.copy(
-                notifications = _notifications.toList(),
-                isEmpty = false
+    val uiState = repository.notifications
+        .map { list ->
+            NotificationsUiState(
+                notifications = list,
+                isEmpty = list.isEmpty()
             )
         }
-    }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NotificationsUiState())
 }
