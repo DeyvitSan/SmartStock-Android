@@ -26,6 +26,7 @@ import com.deyvieat.smartstock.features.inventory.presentation.viewmodels.AddPro
 import com.deyvieat.smartstock.features.inventory.presentation.viewmodels.EditProductViewModel
 import com.deyvieat.smartstock.features.inventory.presentation.viewmodels.InventoryViewModel
 import com.deyvieat.smartstock.features.scanner.presentation.screens.ScannerScreen
+import com.deyvieat.smartstock.features.notifications.presentation.screens.NotificationsScreen
 
 @Composable
 fun NavigationWrapper() {
@@ -91,7 +92,8 @@ fun NavigationWrapper() {
                     navController.navigate(EditProduct(product.id))
                 },
                 onScannerClick = { navController.navigate(Scanner) },
-                onDashboardClick = { navController.navigate(Dashboard) }
+                onDashboardClick = { navController.navigate(Dashboard) },
+                onNotificationsClick = { navController.navigate(Notifications) }
             )
         }
 
