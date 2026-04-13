@@ -8,13 +8,14 @@ import com.deyvieat.smartstock.core.notifications.NotificationHelper
 import com.deyvieat.smartstock.features.inventory.domain.repository.InventoryRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-
+import com.deyvieat.smartstock.features.notifications.domain.repository.NotificationsRepository
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val repository: InventoryRepository,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val notificationsRepository: NotificationsRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -26,6 +27,8 @@ class SyncWorker @AssistedInject constructor(
             val lowStock = repository.getLowStockList(threshold = 5)
             lowStock.forEach { product ->
                 notificationHelper.showStockAlert(product.name, product.quantity)
+
+                notificationsRepository.addNotification(product.name, product.quantity)
             }
 
             Result.success()
